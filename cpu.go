@@ -20,40 +20,45 @@ type CPU struct {
 }
 
 // Addressing Modes
-
-func (cpu *CPU) ZeroPage() (uint8, uint8) {
+/*
+Returns value, address of a Zero Page of memory, the first 256 bits
+*/
+func (cpu *CPU) ZeroPage() (uint8, uint16) {
 	address := cpu.memory[cpu.PC+1]
 
 	value := cpu.memory[address]
 
 	cpu.PC += 2
 	cpu.Cycles += 3
-	return value, address
+	return value, uint16(address)
 }
 
-func (cpu *CPU) ZeroPageX() (uint8, uint8) {
+/*
+Returns (value, address)+x of a Zero Page of memory, the first 256 bits
+*/
+func (cpu *CPU) ZeroPageX() (uint8, uint16) {
 	zeroAddress := cpu.memory[cpu.PC+1]
 	effectiveAddress := uint8(zeroAddress + cpu.X)
 	value := cpu.memory[effectiveAddress]
 	cpu.PC += 2
 	cpu.Cycles += 4
-	return value, effectiveAddress
+	return value, uint16(effectiveAddress)
 }
 
-func (cpu *CPU) IndexedIndirect() (uint8, uint8) {
+func (cpu *CPU) IndexedIndirect() (uint8, uint16) {
 	zeroAddress := cpu.memory[cpu.PC+1]
 	effectiveAddress := zeroAddress + cpu.X&0xFF
 	value := cpu.memory[effectiveAddress]
-	return value, effectiveAddress
+	return value, uint16(effectiveAddress)
 }
 
-func (cpu *CPU) IndirectIndex() (uint8, uint8) {
+func (cpu *CPU) IndirectIndex() (uint8, uint16) {
 	zeroAddress := cpu.memory[cpu.PC+1]
 	effectiveAddress := zeroAddress + cpu.Y&0xFF
 	value := cpu.memory[effectiveAddress]
 	cpu.Cycles += 5
 	cpu.PC += 2
-	return value, effectiveAddress
+	return value, uint16(effectiveAddress)
 }
 
 func (cpu *CPU) Relative() uint16 {
@@ -519,6 +524,185 @@ func (cpu *CPU) AddWCarryAbsolute() {
 	cpu.A += value
 	cpu.setZeroFlag(cpu.A)
 	cpu.setNegativeFlag(cpu.A)
+}
+
+func (cpu *CPU) EORImmediate() {
+	value := cpu.Immediate()
+	cpu.A = value ^ cpu.A
+	cpu.setZeroFlag(cpu.A)
+	cpu.setNegativeFlag(cpu.A)
+}
+
+func (cpu *CPU) EORZeroPage() {
+	_, address := cpu.ZeroPage()
+	value := cpu.memory[address]
+	cpu.A = value ^ cpu.A
+	cpu.setZeroFlag(cpu.A)
+	cpu.setNegativeFlag(cpu.A)
+}
+
+func (cpu *CPU) EORZeroPageX() {
+	_, address := cpu.ZeroPageX()
+	value := cpu.memory[address]
+	cpu.A = value ^ cpu.A
+	cpu.setZeroFlag(cpu.A)
+	cpu.setNegativeFlag(cpu.A)
+}
+
+func (cpu *CPU) EORAbsolute() {
+	address := cpu.Absolute()
+	value := cpu.memory[address]
+	cpu.A = value ^ cpu.A
+	cpu.setZeroFlag(cpu.A)
+	cpu.setNegativeFlag(cpu.A)
+}
+
+func (cpu *CPU) EORAbsoluteX() {
+	address := cpu.AbsoluteX()
+	value := cpu.memory[address]
+	cpu.A = value ^ cpu.A
+	cpu.setZeroFlag(cpu.A)
+	cpu.setNegativeFlag(cpu.A)
+}
+
+func (cpu *CPU) EORAbsoluteY() {
+	address := cpu.AbsoluteY()
+	value := cpu.memory[address]
+	cpu.A = value ^ cpu.A
+	cpu.setZeroFlag(cpu.A)
+	cpu.setNegativeFlag(cpu.A)
+}
+
+func (cpu *CPU) EORIndirectIndex() {
+	_, address := cpu.IndirectIndex()
+	value := cpu.memory[address]
+	cpu.A = value ^ cpu.A
+	cpu.setZeroFlag(cpu.A)
+	cpu.setNegativeFlag(cpu.A)
+}
+
+func (cpu *CPU) EORIndexIndirect() {
+	_, address := cpu.IndexedIndirect()
+	value := cpu.memory[address]
+	cpu.A = value ^ cpu.A
+	cpu.setZeroFlag(cpu.A)
+	cpu.setNegativeFlag(cpu.A)
+}
+
+func (cpu *CPU) ORAImmediate() {
+	value := cpu.Immediate()
+	cpu.A = value | cpu.A
+
+	cpu.setZeroFlag(cpu.A)
+	cpu.setNegativeFlag(cpu.A)
+}
+
+func (cpu *CPU) ORAZeroPage() {
+	_, address := cpu.ZeroPage()
+	value := cpu.memory[address]
+	cpu.A = value | cpu.A
+
+	cpu.setZeroFlag(cpu.A)
+	cpu.setNegativeFlag(cpu.A)
+}
+
+func (cpu *CPU) ORAZeroPageX() {
+	_, address := cpu.ZeroPageX()
+	value := cpu.memory[address]
+	cpu.A = value | cpu.A
+
+	cpu.setZeroFlag(cpu.A)
+	cpu.setNegativeFlag(cpu.A)
+}
+
+func (cpu *CPU) ORAAbsolute() {
+	address := cpu.Absolute()
+	value := cpu.memory[address]
+	cpu.A = value | cpu.A
+
+	cpu.setZeroFlag(cpu.A)
+	cpu.setNegativeFlag(cpu.A)
+}
+
+func (cpu *CPU) ORAAbsoluteX() {
+	address := cpu.AbsoluteX()
+	value := cpu.memory[address]
+	cpu.A = value | cpu.A
+
+	cpu.setZeroFlag(cpu.A)
+	cpu.setNegativeFlag(cpu.A)
+}
+
+func (cpu *CPU) ORAAbsoluteY() {
+	address := cpu.AbsoluteY()
+	value := cpu.memory[address]
+	cpu.A = value | cpu.A
+
+	cpu.setZeroFlag(cpu.A)
+	cpu.setNegativeFlag(cpu.A)
+}
+
+func (cpu *CPU) ORAIndirectIndex() {
+	_, address := cpu.IndirectIndex()
+	value := cpu.memory[address]
+	cpu.A = value | cpu.A
+
+	cpu.setZeroFlag(cpu.A)
+	cpu.setNegativeFlag(cpu.A)
+}
+
+func (cpu *CPU) ORAIndexIndirect() {
+	_, address := cpu.IndexedIndirect()
+	value := cpu.memory[address]
+	cpu.A = value | cpu.A
+
+	cpu.setZeroFlag(cpu.A)
+	cpu.setNegativeFlag(cpu.A)
+}
+
+func (cpu *CPU) BITZeroPage() {
+	value, _ := cpu.ZeroPage()
+
+	if cpu.A&value == 0 {
+		cpu.P = setBit(cpu.P, 1)
+	} else {
+		cpu.P = clearBit(cpu.P, 1)
+	}
+
+	if getBit(value, 6) {
+		cpu.P = setBit(cpu.P, 6)
+	} else {
+		cpu.P = clearBit(cpu.P, 6)
+	}
+
+	if getBit(value, 7) {
+		cpu.P = setBit(cpu.P, 7)
+	} else {
+		cpu.P = clearBit(cpu.P, 7)
+	}
+}
+
+func (cpu *CPU) BITAbsolute() {
+	address := cpu.Absolute()
+	value := cpu.memory[address]
+
+	if cpu.A&value == 0 {
+		cpu.P = setBit(cpu.P, 1)
+	} else {
+		cpu.P = clearBit(cpu.P, 1)
+	}
+
+	if getBit(value, 6) {
+		cpu.P = setBit(cpu.P, 6)
+	} else {
+		cpu.P = clearBit(cpu.P, 6)
+	}
+
+	if getBit(value, 7) {
+		cpu.P = setBit(cpu.P, 7)
+	} else {
+		cpu.P = clearBit(cpu.P, 7)
+	}
 }
 
 func (cpu *CPU) NOP() {
