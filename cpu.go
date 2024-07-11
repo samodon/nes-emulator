@@ -21,7 +21,7 @@ type CPU struct {
 
 // Addressing Modes
 /*
-Returns value, address of a Zero Page of memory, the first 256 bits
+Returns value, address of a Zero Page of memory, the first 256 bits base of 3 cycles
 */
 func (cpu *CPU) ZeroPage() (uint8, uint16) {
 	address := cpu.memory[cpu.PC+1]
@@ -34,7 +34,7 @@ func (cpu *CPU) ZeroPage() (uint8, uint16) {
 }
 
 /*
-Returns (value, address)+x of a Zero Page of memory, the first 256 bits
+Returns (value, address)+x of a Zero Page of memory, the first 256 bits base of 3 cycles
 */
 func (cpu *CPU) ZeroPageX() (uint8, uint16) {
 	zeroAddress := cpu.memory[cpu.PC+1]
@@ -79,6 +79,7 @@ func (cpu *CPU) BEQRelative() {
 	}
 }
 
+// Returns the first 8 bits in memory
 func (cpu *CPU) ZeroPageY() uint8 {
 	zeroAddress := cpu.memory[cpu.PC+1]
 	effectiveAddress := uint8(zeroAddress + cpu.Y)
@@ -88,6 +89,7 @@ func (cpu *CPU) ZeroPageY() uint8 {
 	return value
 }
 
+// Returns a value immediately supplied in the command, takes base of 2 Cycles
 func (cpu *CPU) Immediate() uint8 {
 	value := cpu.memory[cpu.PC+1]
 	cpu.PC += 2
@@ -95,7 +97,7 @@ func (cpu *CPU) Immediate() uint8 {
 	return value
 }
 
-// Increment all usages of this by 1
+// Returns a 16 bit memory address, takes base of 4 Cycles
 func (cpu *CPU) Absolute() uint16 {
 	lowByte := uint16(cpu.memory[cpu.PC+1])
 	highByte := uint16(cpu.memory[cpu.PC+2])
@@ -106,7 +108,7 @@ func (cpu *CPU) Absolute() uint16 {
 	return uint16(absoluteAddress)
 }
 
-// Increment all usages of this by 1
+// Returns a 16 bit memory address + value in x register, takes base of 4 Cycles
 func (cpu *CPU) AbsoluteX() uint16 {
 	lowByte := uint16(cpu.memory[cpu.PC+1])
 	highByte := uint16(cpu.memory[cpu.PC+2])
@@ -117,7 +119,7 @@ func (cpu *CPU) AbsoluteX() uint16 {
 	return uint16(absoluteAddress)
 }
 
-// Increment all usages of this by 1
+// Returns a 16 bit memory address + value in Y register, takes base of 4 Cycles
 func (cpu *CPU) AbsoluteY() uint16 {
 	lowByte := uint16(cpu.memory[cpu.PC+1])
 	highByte := uint16(cpu.memory[cpu.PC+2])
@@ -149,6 +151,26 @@ func (cpu *CPU) setZeroFlag(value uint8) {
 		setBit(cpu.P, 1)
 	} else {
 		clearBit(cpu.P, 1)
+	}
+}
+
+// TODO
+// Finish this implementation
+func (cpu *CPU) setADDOverflowFlag(value1 uint, value2 uint) {
+	if value1+value2 > 255 {
+		setBit(cpu.P, 6)
+		setBit(cpu.P, 0)
+	} else {
+		clearBit(cpu.P, 6)
+	}
+}
+
+func (cpu *CPU) setSUBOverflowFlag(value1 uint, value2 uint) {
+	if int(value1)-int(value2) < 0 {
+		setBit(cpu.P, 6)
+	} else {
+		clearBit(cpu.P, 6)
+		clearBit(cpu.P, 0)
 	}
 }
 
@@ -509,23 +531,6 @@ func (cpu *CPU) ANDIndirectIndex() {
 	cpu.setNegativeFlag(cpu.A)
 }
 
-func (cpu *CPU) AddWCarryImmediate() {
-	value := cpu.Immediate()
-	cpu.setCarryFlag(cpu.A, value)
-	cpu.A += value
-	cpu.setZeroFlag(cpu.A)
-	cpu.setNegativeFlag(cpu.A)
-}
-
-func (cpu *CPU) AddWCarryAbsolute() {
-	address := cpu.Absolute()
-	value := cpu.memory[address]
-	cpu.setCarryFlag(cpu.A, value)
-	cpu.A += value
-	cpu.setZeroFlag(cpu.A)
-	cpu.setNegativeFlag(cpu.A)
-}
-
 func (cpu *CPU) EORImmediate() {
 	value := cpu.Immediate()
 	cpu.A = value ^ cpu.A
@@ -705,6 +710,281 @@ func (cpu *CPU) BITAbsolute() {
 	}
 }
 
+func (cpu *CPU) ADCAbsolute() {
+	address := cpu.Absolute()
+	value := cpu.memory[address]
+	cpu.setCarryFlag(cpu.A, value)
+	cpu.setADDOverflowFlag(uint(cpu.A), uint(value))
+	cpu.A += value
+	cpu.setZeroFlag(cpu.A)
+	cpu.setNegativeFlag(cpu.A)
+}
+
+func (cpu *CPU) ADCImmediate() {
+	value := cpu.Immediate()
+	cpu.setCarryFlag(cpu.A, value)
+	cpu.setADDOverflowFlag(uint(cpu.A), uint(value))
+	cpu.A += value
+	cpu.setZeroFlag(cpu.A)
+	cpu.setNegativeFlag(cpu.A)
+}
+
+func (cpu *CPU) ADCAbsoluteX() {
+	address := cpu.AbsoluteX()
+	value := cpu.memory[address]
+	cpu.setCarryFlag(cpu.A, value)
+	cpu.setADDOverflowFlag(uint(cpu.A), uint(value))
+	cpu.A += value
+	cpu.setZeroFlag(cpu.A)
+	cpu.setNegativeFlag(cpu.A)
+}
+
+func (cpu *CPU) ADCAbsoluteY() {
+	address := cpu.AbsoluteY()
+	value := cpu.memory[address]
+	cpu.setCarryFlag(cpu.A, value)
+	cpu.setADDOverflowFlag(uint(cpu.A), uint(value))
+	cpu.A += value
+	cpu.setZeroFlag(cpu.A)
+	cpu.setNegativeFlag(cpu.A)
+}
+
+func (cpu *CPU) ADCZeroPage() {
+	_, address := cpu.ZeroPage()
+	value := cpu.memory[address]
+	cpu.setCarryFlag(cpu.A, value)
+	cpu.setADDOverflowFlag(uint(cpu.A), uint(value))
+	cpu.A += value
+	cpu.setZeroFlag(cpu.A)
+	cpu.setNegativeFlag(cpu.A)
+}
+
+func (cpu *CPU) ADCZeroPageX() {
+	_, address := cpu.ZeroPageX()
+	value := cpu.memory[address]
+	cpu.setCarryFlag(cpu.A, value)
+	cpu.setADDOverflowFlag(uint(cpu.A), uint(value))
+	cpu.A += value
+	cpu.setZeroFlag(cpu.A)
+	cpu.setNegativeFlag(cpu.A)
+}
+
+func (cpu *CPU) ADCIndirectIndex() {
+	_, address := cpu.IndirectIndex()
+	value := cpu.memory[address]
+	cpu.setCarryFlag(cpu.A, value)
+	cpu.setADDOverflowFlag(uint(cpu.A), uint(value))
+	cpu.A += value
+	cpu.setZeroFlag(cpu.A)
+	cpu.setNegativeFlag(cpu.A)
+}
+
+func (cpu *CPU) ADCIndexIndirect() {
+	_, address := cpu.IndexedIndirect()
+	value := cpu.memory[address]
+	cpu.setCarryFlag(cpu.A, value)
+	cpu.setADDOverflowFlag(uint(cpu.A), uint(value))
+	cpu.A += value
+	cpu.setZeroFlag(cpu.A)
+	cpu.setNegativeFlag(cpu.A)
+}
+
+func (cpu *CPU) SBCImmediate() {
+	value := cpu.Immediate()
+	cpu.setCarryFlag(cpu.A, value)
+	cpu.setSUBOverflowFlag(uint(cpu.A), uint(value))
+	cpu.A -= value
+	cpu.setZeroFlag(cpu.A)
+	cpu.setNegativeFlag(cpu.A)
+}
+
+func (cpu *CPU) SBCZeroPage() {
+	value, _ := cpu.ZeroPage()
+	cpu.setCarryFlag(cpu.A, value)
+	cpu.setSUBOverflowFlag(uint(cpu.A), uint(value))
+	cpu.A -= value
+	cpu.setZeroFlag(cpu.A)
+	cpu.setNegativeFlag(cpu.A)
+}
+
+func (cpu *CPU) SBCZeroPageX() {
+	value, _ := cpu.ZeroPageX()
+	cpu.setCarryFlag(cpu.A, value)
+	cpu.setSUBOverflowFlag(uint(cpu.A), uint(value))
+	cpu.A -= value
+	cpu.setZeroFlag(cpu.A)
+	cpu.setNegativeFlag(cpu.A)
+}
+
+func (cpu *CPU) SBCAbsolute() {
+	address := cpu.Absolute()
+	value := cpu.memory[address]
+	cpu.setCarryFlag(cpu.A, value)
+	cpu.setSUBOverflowFlag(uint(cpu.A), uint(value))
+	cpu.A -= value
+	cpu.setZeroFlag(cpu.A)
+	cpu.setNegativeFlag(cpu.A)
+}
+
+func (cpu *CPU) SBCAbsoluteX() {
+	address := cpu.AbsoluteX()
+	value := cpu.memory[address]
+	cpu.setCarryFlag(cpu.A, value)
+	cpu.setSUBOverflowFlag(uint(cpu.A), uint(value))
+	cpu.A -= value
+	cpu.setZeroFlag(cpu.A)
+	cpu.setNegativeFlag(cpu.A)
+}
+
+func (cpu *CPU) SBCAbsoluteY() {
+	address := cpu.AbsoluteY()
+	value := cpu.memory[address]
+	cpu.setCarryFlag(cpu.A, value)
+	cpu.setSUBOverflowFlag(uint(cpu.A), uint(value))
+	cpu.A -= value
+	cpu.setZeroFlag(cpu.A)
+	cpu.setNegativeFlag(cpu.A)
+}
+
+func (cpu *CPU) SBCIndirectIndex() {
+	value, _ := cpu.IndirectIndex()
+	cpu.setCarryFlag(cpu.A, value)
+	cpu.setSUBOverflowFlag(uint(cpu.A), uint(value))
+	cpu.A -= value
+	cpu.setZeroFlag(cpu.A)
+	cpu.setNegativeFlag(cpu.A)
+}
+
+func (cpu *CPU) SBCIndexIndirect() {
+	value, _ := cpu.IndexedIndirect()
+	cpu.setCarryFlag(cpu.A, value)
+	cpu.setSUBOverflowFlag(uint(cpu.A), uint(value))
+	cpu.A -= value
+	cpu.setZeroFlag(cpu.A)
+	cpu.setNegativeFlag(cpu.A)
+}
+
+func (cpu *CPU) CMPImmediate() {
+	if cpu.A > cpu.Immediate() {
+		setBit(cpu.P, 0)
+	}
+	if cpu.A == cpu.Immediate() {
+		setBit(cpu.P, 1)
+	}
+}
+
+func (cpu *CPU) CMPZeroPage() {
+	value, _ := cpu.ZeroPage()
+	if cpu.A > value {
+		setBit(cpu.P, 0)
+	}
+	if cpu.A == value {
+		setBit(cpu.P, 1)
+	}
+}
+
+func (cpu *CPU) CMPZeroPageX() {
+	value, _ := cpu.ZeroPageX()
+	if cpu.A > value {
+		setBit(cpu.P, 0)
+	}
+	if cpu.A == value {
+		setBit(cpu.P, 1)
+	}
+}
+
+func (cpu *CPU) CMPAbsolute() {
+	address := cpu.Absolute()
+	value := cpu.memory[address]
+	if cpu.A > value {
+		setBit(cpu.P, 0)
+	}
+	if cpu.A == value {
+		setBit(cpu.P, 1)
+	}
+}
+
+func (cpu *CPU) CMPAbsoluteX() {
+	address := cpu.AbsoluteX()
+	value := cpu.memory[address]
+	if cpu.A > value {
+		setBit(cpu.P, 0)
+	}
+	if cpu.A == value {
+		setBit(cpu.P, 1)
+	}
+}
+
+func (cpu *CPU) CMPIndexedIndirect() {
+	value, _ := cpu.IndexedIndirect()
+	if cpu.A > value {
+		setBit(cpu.P, 0)
+	}
+	if cpu.A == value {
+		setBit(cpu.P, 1)
+	}
+}
+
+func (cpu *CPU) CPXImmediate() {
+	if cpu.X > cpu.Immediate() {
+		setBit(cpu.P, 0)
+	}
+	if cpu.X == cpu.Immediate() {
+		setBit(cpu.P, 1)
+	}
+}
+
+func (cpu *CPU) CPXZeroPage() {
+	value, _ := cpu.ZeroPage()
+	if cpu.X > value {
+		setBit(cpu.P, 0)
+	}
+	if cpu.X == value {
+		setBit(cpu.P, 1)
+	}
+}
+
+func (cpu *CPU) CPXAbsolute() {
+	address := cpu.Absolute()
+	value := cpu.memory[address]
+	if cpu.X > value {
+		setBit(cpu.P, 0)
+	}
+	if cpu.A == value {
+		setBit(cpu.P, 1)
+	}
+}
+
+func (cpu *CPU) CPYImmediate() {
+	if cpu.Y > cpu.Immediate() {
+		setBit(cpu.P, 0)
+	}
+	if cpu.Y == cpu.Immediate() {
+		setBit(cpu.P, 1)
+	}
+}
+
+func (cpu *CPU) CPYZeroPage() {
+	value, _ := cpu.ZeroPage()
+	if cpu.Y > value {
+		setBit(cpu.P, 0)
+	}
+	if cpu.Y == value {
+		setBit(cpu.P, 1)
+	}
+}
+
+func (cpu *CPU) CPYAbsolute() {
+	address := cpu.Absolute()
+	value := cpu.memory[address]
+	if cpu.Y > value {
+		setBit(cpu.P, 0)
+	}
+	if cpu.Y == value {
+		setBit(cpu.P, 1)
+	}
+}
+
 func (cpu *CPU) NOP() {
 	cpu.PC = cpu.PC + 1
 	fmt.Println("NOP")
@@ -723,8 +1003,18 @@ func (cpu *CPU) ExecuteInstructions(opcode uint8) {
 		cpu.LDAImmediate()
 	case 0xA2: // LDX Immediate
 		cpu.LDXImmediate()
+	case 0x09:
+		cpu.ORAImmediate()
 	case 0xA0: // LDY Immediate
 		cpu.LDYImmediate()
+	case 0x69: // ADC Immediate
+		cpu.ADCImmediate()
+	case 0xE9: // SBC Immediate
+		cpu.SBCImmediate()
+	case 0x0a: // ORA Immediate
+		cpu.ORAImmediate()
+	case 0x29: // AND Immediate
+		cpu.ANDImmediate()
 	case 0xEA: // NOP
 		cpu.NOP()
 	default:
@@ -735,18 +1025,29 @@ func (cpu *CPU) ExecuteInstructions(opcode uint8) {
 func main() {
 	cpu := &CPU{}
 	// Example program: LDA #$05, LDX #$0A, NOP
-	program := []uint8{0xA9, 0x05, 0xA2, 0x0A, 0xEA}
+	program := []uint8{
+		// Addition: 5 + 10 = 15
+		0xA9, 0x05, // LDA #$05
+		0x69, 0x0A, // ADC #$0A
 
+		// Subtraction: 15 - 7 = 8
+		0xE9, 0x07, // SBC #$07
+
+		// OR: 0x08 | 0xF0 = 0xF8
+		0x09, 0xF0, // ORA #$F0
+
+		// AND: 0xF8 & 0x0F = 0x08
+		0x29, 0x0F, // AND #$0F
+
+		0xEA, // NOP (No Operation)
+	}
 	cpu.LoadProgram(program, 0x8000) // Load at address 0x8000
 
-	cpu.setNegativeFlag(0x80)
 	// Now run the emulator
-	for {
+	for i := 0; i < len(program); i++ {
 		opcode := cpu.memory[cpu.PC]
 		cpu.ExecuteInstructions(opcode)
-
-		fmt.Printf("CPU status: %08b\n", cpu.P)
-		// Add any necessary checks or breaks here, such as stopping the loop
-		// based on a certain condition or user input
+		fmt.Printf("Step %d: PC: 0x%04X, A: %d, X: 0x%02X, Y: 0x%02X, P: %08b\n",
+			i+1, cpu.PC, cpu.A, cpu.X, cpu.Y, cpu.P)
 	}
 }
