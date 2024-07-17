@@ -18,7 +18,6 @@ type CPU struct {
 	memory [65536]uint8
 
 	Cycles uint16
-	// TODO: Add fields for flags
 }
 
 // Addressing Modes
@@ -851,6 +850,11 @@ func (cpu *CPU) ADCIndexIndirect() {
 
 func (cpu *CPU) SBCImmediate() {
 	value := cpu.Immediate()
+	oldCarry := uint8(0)
+	if getBit(cpu.P, 0) {
+		oldCarry = 1
+	}
+	value = value + (1 - oldCarry)
 	cpu.setCarryFlag(cpu.A, value)
 	cpu.setSUBOverflowFlag(uint(cpu.A), uint(value))
 	cpu.A -= value
@@ -860,6 +864,11 @@ func (cpu *CPU) SBCImmediate() {
 
 func (cpu *CPU) SBCZeroPage() {
 	value, _ := cpu.ZeroPage()
+	oldCarry := uint8(0)
+	if getBit(cpu.P, 0) {
+		oldCarry = 1
+	}
+	value = value + (1 - oldCarry)
 	cpu.setCarryFlag(cpu.A, value)
 	cpu.setSUBOverflowFlag(uint(cpu.A), uint(value))
 	cpu.A -= value
@@ -869,6 +878,11 @@ func (cpu *CPU) SBCZeroPage() {
 
 func (cpu *CPU) SBCZeroPageX() {
 	value, _ := cpu.ZeroPageX()
+	oldCarry := uint8(0)
+	if getBit(cpu.P, 0) {
+		oldCarry = 1
+	}
+	value = value + (1 - oldCarry)
 	cpu.setCarryFlag(cpu.A, value)
 	cpu.setSUBOverflowFlag(uint(cpu.A), uint(value))
 	cpu.A -= value
@@ -879,6 +893,12 @@ func (cpu *CPU) SBCZeroPageX() {
 func (cpu *CPU) SBCAbsolute() {
 	address := cpu.Absolute()
 	value := cpu.memory[address]
+
+	oldCarry := uint8(0)
+	if getBit(cpu.P, 0) {
+		oldCarry = 1
+	}
+	value = value + (1 - oldCarry)
 	cpu.setCarryFlag(cpu.A, value)
 	cpu.setSUBOverflowFlag(uint(cpu.A), uint(value))
 	cpu.A -= value
@@ -889,6 +909,11 @@ func (cpu *CPU) SBCAbsolute() {
 func (cpu *CPU) SBCAbsoluteX() {
 	address := cpu.AbsoluteX()
 	value := cpu.memory[address]
+	oldCarry := uint8(0)
+	if getBit(cpu.P, 0) {
+		oldCarry = 1
+	}
+	value = value + (1 - oldCarry)
 	cpu.setCarryFlag(cpu.A, value)
 	cpu.setSUBOverflowFlag(uint(cpu.A), uint(value))
 	cpu.A -= value
@@ -899,6 +924,11 @@ func (cpu *CPU) SBCAbsoluteX() {
 func (cpu *CPU) SBCAbsoluteY() {
 	address := cpu.AbsoluteY()
 	value := cpu.memory[address]
+	oldCarry := uint8(0)
+	if getBit(cpu.P, 0) {
+		oldCarry = 1
+	}
+	value = value + (1 - oldCarry)
 	cpu.setCarryFlag(cpu.A, value)
 	cpu.setSUBOverflowFlag(uint(cpu.A), uint(value))
 	cpu.A -= value
@@ -908,6 +938,11 @@ func (cpu *CPU) SBCAbsoluteY() {
 
 func (cpu *CPU) SBCIndirectIndex() {
 	value, _ := cpu.IndirectIndex()
+	oldCarry := uint8(0)
+	if getBit(cpu.P, 0) {
+		oldCarry = 1
+	}
+	value = value + (1 - oldCarry)
 	cpu.setCarryFlag(cpu.A, value)
 	cpu.setSUBOverflowFlag(uint(cpu.A), uint(value))
 	cpu.A -= value
@@ -917,6 +952,11 @@ func (cpu *CPU) SBCIndirectIndex() {
 
 func (cpu *CPU) SBCIndexIndirect() {
 	value, _ := cpu.IndexedIndirect()
+	oldCarry := uint8(0)
+	if getBit(cpu.P, 0) {
+		oldCarry = 1
+	}
+	value = value + (1 - oldCarry)
 	cpu.setCarryFlag(cpu.A, value)
 	cpu.setSUBOverflowFlag(uint(cpu.A), uint(value))
 	cpu.A -= value
@@ -1670,6 +1710,69 @@ func (cpu *CPU) SEC() {
 	cpu.Cycles += 2
 }
 
+func (cpu *CPU) ISCAbsolute() {
+	address := cpu.Absolute()
+	cpu.memory[address] = cpu.memory[address] + 1
+	cpu.sbc(cpu.memory[address])
+	cpu.Cycles += 3
+}
+
+func (cpu *CPU) ISCAbsoluteX() {
+	address := cpu.AbsoluteX()
+	cpu.memory[address] = cpu.memory[address] + 1
+	cpu.sbc(cpu.memory[address])
+	cpu.Cycles += 3
+}
+
+func (cpu *CPU) ISCAbsoluteY() {
+	address := cpu.AbsoluteY()
+	cpu.memory[address] = cpu.memory[address] + 1
+	cpu.sbc(cpu.memory[address])
+	cpu.Cycles += 3
+}
+
+func (cpu *CPU) ISCZeroPage() {
+	_, address := cpu.ZeroPage()
+	cpu.memory[address] = cpu.memory[address] + 1
+	cpu.sbc(cpu.memory[address])
+	cpu.Cycles += 2
+}
+
+func (cpu *CPU) ISCZeroPageX() {
+	_, address := cpu.ZeroPageX()
+	cpu.memory[address] = cpu.memory[address] + 1
+	cpu.sbc(cpu.memory[address])
+	cpu.Cycles += 3
+}
+
+func (cpu *CPU) ISCIndirectIndex() {
+	_, address := cpu.IndirectIndex()
+	cpu.memory[address] = cpu.memory[address] + 1
+	cpu.sbc(cpu.memory[address])
+	cpu.Cycles += 3
+}
+
+func (cpu *CPU) ISCIndexIndirect() {
+	_, address := cpu.IndexedIndirect()
+	cpu.memory[address] = cpu.memory[address] + 1
+	cpu.sbc(cpu.memory[address])
+	cpu.Cycles += 3
+}
+
+func (cpu *CPU) sbc(value uint8) {
+	oldCarry := uint8(0)
+	if getBit(cpu.P, 0) {
+		oldCarry = 1
+	}
+	value = value - (1 - oldCarry)
+
+	cpu.setCarryFlag(cpu.A, value)
+	cpu.setSUBOverflowFlag(uint(cpu.A), (uint(value)))
+	cpu.A = cpu.A - value
+	cpu.setZeroFlag(cpu.A)
+	cpu.setNegativeFlag(cpu.A)
+}
+
 func (cpu *CPU) SED() {
 	cpu.P = setBit(cpu.P, 3)
 	cpu.PC++
@@ -1686,27 +1789,25 @@ func (cpu *CPU) BRK() {
 	// Increment PC to point to the next instruction
 	cpu.PC++
 	// Push high byte of the PC onto the stack
-	// cpu.memory[0x100|uint16(cpu.SP)] = byte((cpu.PC >> 8) & 0xFF)
-	// cpu.SP--
+	cpu.memory[0x100|uint16(cpu.SP)] = byte((cpu.PC >> 8) & 0xFF)
+	cpu.SP--
 	// Push low byte of the PC onto the stack
-	// cpu.memory[0x100|uint16(cpu.SP)] = byte(cpu.PC & 0xFF)
-	// cpu.SP--
+	cpu.memory[0x100|uint16(cpu.SP)] = byte(cpu.PC & 0xFF)
+	cpu.SP--
 	// Push the status register onto the stack with the break flag set
-	// cpu.memory[0x100|uint16(cpu.SP)] = cpu.P | (1 << 4)
-	// cpu.SP--
+	cpu.memory[0x100|uint16(cpu.SP)] = cpu.P | (1 << 4)
+	cpu.SP--
 	// Set the break flag in the status register
-	// cpu.P |= (1 << 4)
+	cpu.P |= (1 << 4)
 	// Load the IRQ interrupt vector into the PC
-	// lowByte := uint16(cpu.memory[0xFFFE])
-	// highByte := uint16(cpu.memory[0xFFFF])
-	// cpu.PC = (highByte << 8) | lowByte
+	lowByte := uint16(cpu.memory[0xFFFE])
+	highByte := uint16(cpu.memory[0xFFFF])
+	cpu.PC = (highByte << 8) | lowByte
 	// // Increment the cycle count
-	// cpu.Cycles += 7
+	cpu.Cycles += 7
 }
 
 func (cpu *CPU) NOP() {
-	// cpu.PC = cpu.PC + 1
-	// fmt.Println("NOP")
 	cpu.PC++
 }
 
@@ -1866,6 +1967,12 @@ func (cpu *CPU) ExecuteInstruction(opcode uint8) {
 		0x00: (*CPU).BRK,
 		0x4C: (*CPU).JMPAbsolute,
 		0x6c: (*CPU).JMPIndirect,
+		0xE7: (*CPU).ISCZeroPage,
+		0xF7: (*CPU).ISCZeroPageX,
+		0xEF: (*CPU).ISCAbsolute,
+		0xFB: (*CPU).ISCAbsoluteX,
+		0xE3: (*CPU).ISCIndirectIndex,
+		0xF3: (*CPU).ISCIndexIndirect,
 		// 0x40: (*CPU).RT,
 		// 0xEA: (*CPU).NOP,
 	}
